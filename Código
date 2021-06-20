@@ -1,0 +1,114 @@
+#Desafios
+#Igor Matheus Gramacho de Souza
+
+rm(list=ls())
+#Desafio 1
+setwd("C:\\Users\\igor\\Desktop\\TL")  #Alterar diretório
+dados <- read.csv2("base_teste.csv",header=T,sep=",")
+attach(dados)
+#Extraindo anos e meses para facilitar o processamento.
+ano_a <- as.numeric(substr(data_abertura_contrato,1,4))
+ano_e <- as.numeric(substr(data_fechamento_contrato,1,4)) 
+mes_a <- as.numeric(substr(data_abertura_contrato,6,7))
+mes_e <- as.numeric(substr(data_fechamento_contrato,6,7)) 
+dados <- cbind(dados,ano_a,mes_a,ano_e,mes_e,ano_mes=paste(mes_a,ano_e,sep="_"))
+
+#Novos clientes com o primeiro contrato firmado em 2020
+nov <- sum(tapply(ano_a,cd_cliente,min)==2020)
+ 
+#Essa lista irá mostrar se o cliente iniciou seu primeiro contrato em 2020 e se ainda estava ativo em dezembro (mês 12)          
+novc <- list(tapply(mes_a,cd_cliente,max)==12,tapply(ano_a,cd_cliente,min)==2020)
+#O encontro TRUE-TRUE indica que o cliente é novo (2020) e manteve-se até dezembro (permeneceu)
+cli_perm <- as.numeric(table(novc)[2,2])
+
+dez19 <- subset(dados,ano_mes=="12_2019")
+dim(dez19)[1]
+cli_19 <- length(unique(dez19$cd_cliente))  #5815 clientes com contrato ativo em dezembro de 2019
+
+dez20 <- subset(dados,ano_mes=="12_2020")
+dim(dez20)[1]
+cli_20 <- length(unique(dez20$cd_cliente))  #5894 clientes com contrato ativo em dezembro de 2020
+
+#Essa função retornará o número de clientes que estavam ativos em dezembro de 2019 e permenaceram em dezembro de 2020
+manutcli_20 <- length(intersect(unique(dez19$cd_cliente),unique(dez20$cd_cliente)))
+
+#O churn irá contabilizar a perda de clientes. Dessa forma pegamos os clientes no início do período e subtraímos aqueles que permeneceram
+churn_ativos <- (cli_19 - manutcli_20)/cli_19
+churn_novos <- (nov - cli_perm)/nov
+churn_ativos
+churn_novos
+
+##################################################################################
+#Desafio 2
+ha <- c('9:00','20:00') #horário da pessoa A
+ain <-c('0:00',ha[1]) #horário antes do início do trabalho
+dte <-c(ha[2],'23:59') #horário após o término do trabalho  
+
+#agenda da pessoa A  e horários fora do turno de trabalho
+aa <- list(ain,c('9:00', '10:30'), c('12:00', '13:00'), c('16:00', '18:00'),dte)
+
+hb <- c('10:00','18:30') #horário da pessoa B
+ain <-c('0:00',hb[1]) #horário antes do início do trabalho
+dte <-c(hb[2],'23:59') #horário após o término do trabalho  
+
+#agenda de pessoa B e horários fora do turno de trabalho
+ab <- list(ain,c('10:00', '11:30'), c('12:30', '14:30'), c('14:30', '15:00'), c('16:00', '17:00'),dte)
+
+disponibilidade = function (aa,ab,duracao) {
+  dur = duracao
+  min_dia <- 1440 #minutos presente em um dia
+  nint <- min_dia/dur #quantidade de intervalos presentes no dia 
+  ints <- as.array(0)
+
+  #Computando os intervalos de t minutos
+  for (i in 1:nint){
+    ints[i+1] <- ints[i]+dur
+  }
+
+  Hora_Min <- function(x){
+     sum(unlist(lapply(strsplit(x, split=":"), as.numeric)) * c(1*60, 1))
+  }
+  
+  #Transformando a agenda da pessoa A em minutos
+  for (i in 1:length(aa)) {
+    aa[[i]][1] <- Hora_Min (aa[[i]][1]) 
+    aa[[i]][2] <- Hora_Min (aa[[i]][2]) 
+  }
+
+  #Transformando a agenda da pessoa B em minutos  
+  for (i in 1:length(ab)) {
+    ab[[i]][1] <- Hora_Min (ab[[i]][1]) 
+    ab[[i]][2] <- Hora_Min (ab[[i]][2]) 
+  }
+  
+  disp <- vector("list")
+  for (i in 1:nint){
+    bloq <- 0
+    #Testamos se o horário está bloqueado nas duas agendas, caso contrário ele está disponível
+    for (j in 1:length(aa)) {
+      if (ints[i] >= as.numeric(aa[[j]][1]) && ints[i] < as.numeric(aa[[j]][2])) {bloq <- 1}
+      if (ints[i+1] > as.numeric(aa[[j]][1]) && ints[i+1] < as.numeric(aa[[j]][2])) {bloq <- 1}
+    }
+    
+    for (k in 1:length(ab)) {
+      if (ints[i] >= as.numeric(ab[[k]][1]) && ints[i] < as.numeric(ab[[k]][2])) {bloq <- 1}
+      if (ints[i+1] > as.numeric(ab[[k]][1]) && ints[i+1] < as.numeric(ab[[k]][2])) {bloq <- 1}
+    }
+    
+    #Listamos os horários disponíveis no formato HH:MM (Amigável)
+    if (bloq == 0)
+    {disp <- list(disp,c(paste(trunc(ints[i]/60),":",if(ints[i] %% 60 < 10) {"0"},ints[i] %% 60,sep=""),
+                         paste(trunc(ints[i+1]/60),":",if(ints[i+1] %% 60 < 10) {"0"},ints[i+1] %% 60,sep="")))
+        }
+    
+  }
+  
+    return (disp)
+}
+
+#Aplicando (considerando a agenda no exemplo dado)
+#Para novos casos, ajustaríamos os horários e agendas e aplicaríamos a função
+disponibilidade (aa,ab,15)  #Disponibilidade para reunião de 15 minutos
+disponibilidade (aa,ab,30)  #Disponibilidade para reunião de 30 minutos
+disponibilidade (aa,ab,60)  #Disponibilidade para reunião de 60 minutos
+
